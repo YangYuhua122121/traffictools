@@ -8,19 +8,19 @@ import pandas as pd
 from typing import Union
 from shapely import Polygon
 import geopandas as gpd
-import matplotlib.pyplot as plt
 
 
 class AMap:
     def __init__(self, key: str):
         self.key = key
 
-    def poi(self, types: Union[int, str], page: int, mode: str = 'area',
+    def poi(self, types: list, page: int, mode: str = 'area',
             area: Union[None, int, str] = None,
             loc: Union[None, tuple] = None,
             r: Union[None, int] = None,
             poly: Union[None, list[tuple]] = None):
         flag = True
+        types = '|'.join(types)
         parameters = {'key': self.key,
                       'types': types,
                       'citylimit': 'true',
@@ -57,7 +57,9 @@ class AMap:
         poi_data['type3'] = poi_data['type'].apply(lambda x: x.split(';')[2])
         poi_data['lon'] = poi_data['location'].apply(lambda x: x.split(',')[0])
         poi_data['lat'] = poi_data['location'].apply(lambda x: x.split(',')[1])
-        poi_data.drop(columns=['type'], inplace=True)
+        poi_data['geometry'] = gpd.points_from_xy(poi_data['lon'], poi_data['lat'])
+        poi_data.drop(columns=['type', 'location'], inplace=True)
+        poi_data = gpd.GeoDataFrame(poi_data)
         return poi_data, page, flag
 
     def ad(self, name: Union[int, str]):
@@ -80,15 +82,4 @@ class AMap:
 
 
 if __name__ == '__main__':
-    from vec import s2m
-    fig = plt.figure(1, (8, 12))
-    ax = plt.subplot(111)
-    am = AMap('b298651ea09a16dba043a23ab23559ce')
-    a = am.ad(310114)
-    # ss = s2m(a['geometry'][0])
-    # a['geometry'] = ss
-    jd = gpd.read_file('C:/Users/杨/Desktop/交通数据分析实训/2/data/map/polygon from osm/Jiading_polygon.shp')
-    jd['geometry'] = s2m(jd['geometry'][0])
-    jd.plot(alpha=0.2, color='r', ax=ax)
-    a['geometry'].plot(ax=ax, alpha=0.2)
-    plt.show()
+    pass
