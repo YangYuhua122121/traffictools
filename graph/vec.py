@@ -108,8 +108,7 @@ def undirected(df: pd.DataFrame, link: list[any, any]) -> pd.DataFrame:
     return df
 
 
-def s2m(s: Union[shapely.Point, shapely.LineString, shapely.Polygon, None] = None,
-        gdf: Union[gpd.GeoDataFrame, None] = None):
+def s2m(s: Union[shapely.Point, shapely.LineString, shapely.Polygon, gpd.GeoDataFrame]):
     def nc_get(longitude, latitude):
         ct = CoordTrans(lon=longitude, lat=latitude)
         new_lon, new_lat = ct.wgs842gcj02()
@@ -132,14 +131,14 @@ def s2m(s: Union[shapely.Point, shapely.LineString, shapely.Polygon, None] = Non
             new_coord = nc_get(lon, lat)
             return shapely.Point(new_coord)
 
-    if not isinstance(s, type(None)):
-        res = doit(s)
+    if isinstance(s, gpd.GeoDataFrame):
+        s['geometry'] = s['geometry'].apply(lambda r: doit(r))
+        res = s.copy()
     else:
-        gdf['geometry'] = gdf['geometry'].apply(lambda r: doit(r))
-        res = gdf.copy()
+        res = doit(s)
     return res
 
 
 if __name__ == '__main__':
     jd = gpd.read_file('C:/Users/杨/Desktop/交通数据分析实训/2/data/map/network from graph/Jiading_edges.shp')
-    print(s2m(gdf=jd))
+    print(s2m(jd))
