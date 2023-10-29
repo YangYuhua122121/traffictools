@@ -9,7 +9,7 @@ import pandas as pd
 from numpy import linspace
 from typing import Union
 from numpy import array
-from geo import CoordTrans
+from graph.geo import CoordTrans
 
 
 def line_split(line: Union[pd.DataFrame, shapely.LineString], nodes: pd.DataFrame, lon, lat, s=10):
