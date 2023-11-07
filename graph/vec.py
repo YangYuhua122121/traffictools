@@ -9,55 +9,58 @@ import pandas as pd
 from numpy import linspace
 from typing import Union
 from numpy import array
+from numpy import ndarray
 from traffictools.graph.geo import CoordTrans
 
 
-
-def line_split(line: Union[pd.DataFrame, shapely.LineString], nodes: pd.DataFrame, lon, lat, s=10):
+def link_get(line: Union[gpd.GeoDataFrame, shapely.LineString],
+             nodes: gpd.GeoDataFrame,
+             name: Union[str, int, float, None] = None, s=10):
     """
 将完整的线对象截断为多个线对象，截断将基于输入的节点
 该函数将返回以各点为起点的多条截断线段
+    :param name: 点id对应的字段aa
     :param s: 截断后各线段的平滑度
-    :param lat: 输入数据集中纬度对应的字段名
-    :param lon: 输入数据集中经度对应的字段名
-    :param line: 一个散点集，组成了轨迹线，包含许多冗余的点;或者一个LineString线矢量
+    :param line: 线
     :param nodes: 一个散点集，仅包含感兴趣的节点（将在此处截断）
     """
     # 获取线
-    if isinstance(line, pd.DataFrame):
-        line_geometry = shapely.LineString(line[[lon, lat]].values)
+    if (isinstance(line, gpd.GeoDataFrame)) and (len(line) != 1):
+        line_geometry = shapely.LineString(line['geometry'])
+    elif (isinstance(line, gpd.GeoDataFrame)) and (len(line) == 1):
+        line_geometry = line['geometry'].values[0]
     else:
         line_geometry = line
     # 获取线的起终点
     st = pd.DataFrame({'geometry': [line_geometry.interpolate(0)]})
     ed = pd.DataFrame({'geometry': [line_geometry.interpolate(line_geometry.length)]})
-    # 构造路段
+
     link_df = nodes.copy()
-    link_df['geometry'] = gpd.points_from_xy(link_df[lon], link_df[lat])
     link_df = pd.concat([st, link_df, ed])
-    link_df['mark'] = range(len(link_df))
     link_df['o'] = link_df['geometry'].apply(lambda r: line_geometry.project(r))
-    link_df.sort_values(by='o', inplace=True)  # 避免输入分割点乱序造成的分割结果混乱
-    mark = (link_df['mark'][:-1]-1).to_frame().reset_index(drop=True)  # 标记分割点的索引
-    link_df['geometry1'] = link_df['geometry'].shift(-1)
-    link_df = link_df.iloc[:-1]
-    link_df['d'] = link_df['geometry1'].apply(lambda r: line_geometry.project(r))
+    link_df.sort_values(by='o', inplace=True)  # 将各点但顺序排序
+
+    link_df['geometry1'] = link_df['geometry'].shift(-1)  # 组成路段前后点
+    link_df['d'] = link_df['o'].shift(-1)
+    if isinstance(name, (str, int, float)):
+        link_df[f'_{name}'] = link_df[name].shift(-1)
+    link_df = link_df.iloc[:-1]  # 去掉多余点
 
     def get_line(x):
         ls = []
-        tmp = linspace(int(x['o']), int(x['d']), s)
-
+        tmp = linspace(x['o'], x['d'], s)
         for i in tmp:
             ls.append(line_geometry.interpolate(i))
         return shapely.LineString(ls)
 
-    split_lines = link_df.apply(get_line, axis=1).reset_index(drop=True).to_frame()
-    split_lines['p1'] = mark
-    split_lines['p2'] = split_lines['p1'].shift(-1)
-    split_lines.loc[split_lines.index[-1], 'p2'] = -1
-    split_lines['p2'] = split_lines['p2'].astype(int)
-    split_lines.rename(columns={0: 'geometry'}, inplace=True)
-    return split_lines
+    link_df['line_geometry'] = link_df.apply(get_line, axis=1)
+    link_df.drop(columns=['o', 'd', 'geometry1', 'geometry'], inplace=True)
+    link_df.rename(columns={'line_geometry': 'geometry'}, inplace=True)
+    link_df = gpd.GeoDataFrame(link_df).reset_index(drop=True)
+    if isinstance(name, (str, int, float)):
+        link_df.loc[link_df.index[0], name] = 'start'
+        link_df.loc[link_df.index[-1], f'_{name}'] = 'end'
+    return link_df
 
 
 def undirected2(df: pd.DataFrame, link: list[any, any]) -> pd.DataFrame:
@@ -108,7 +111,7 @@ def undirected(df: pd.DataFrame, link: list[any, any]) -> pd.DataFrame:
     return df
 
 
-def s2m(s: Union[shapely.Point, shapely.LineString, shapely.Polygon, gpd.GeoDataFrame]):
+def coord_trans(s: Union[shapely.Point, shapely.LineString, shapely.Polygon, gpd.GeoDataFrame, list, tuple, ndarray]):
     def nc_get(longitude, latitude):
         ct = CoordTrans(lon=longitude, lat=latitude)
         new_lon, new_lat = ct.wgs842gcj02()
@@ -134,11 +137,19 @@ def s2m(s: Union[shapely.Point, shapely.LineString, shapely.Polygon, gpd.GeoData
     if isinstance(s, gpd.GeoDataFrame):
         s['geometry'] = s['geometry'].apply(lambda r: doit(r))
         res = s.copy()
+    elif isinstance(s, (list, tuple, ndarray)):
+        a = array(s)  # 转ndarray
+        if a.ndim == 1:
+            res = nc_get(array([a[0]]), array([a[1]]))
+        else:
+            res = nc_get(a[:, 0], a[:, 1])
+        if isinstance(s, ndarray):
+            res = array(res)
     else:
         res = doit(s)
     return res
 
 
 if __name__ == '__main__':
-    jd = gpd.read_file('C:/Users/杨/Desktop/交通数据分析实训/2/data/map/network from graph/Jiading_edges.shp')
-    print(s2m(jd))
+    ps = [(1, 2), (2, 5)]
+    tran_ps = coord_trans(ps)
