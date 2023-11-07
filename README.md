@@ -1,6 +1,6 @@
 # traffictools
  A toolkit for undergraduate transportation students  
- 一个为交通本科生提供的python工具包  
+ 一个向交通本科生提供的python工具包  
   
  该工具包有如下特色：  
  1. 纯中文文档，而且讲解得还算清楚吧(lll￢ω￢)
