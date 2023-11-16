@@ -6,11 +6,9 @@
 import geopandas as gpd
 import shapely
 import pandas as pd
-from numpy import linspace
 from typing import Union
-from numpy import array
-from numpy import ndarray
-from traffictools.graph.geo import CoordTrans
+from traffictools.graph import geo
+import numpy as np
 
 
 def link_get(line: Union[gpd.GeoDataFrame, shapely.LineString],
@@ -48,7 +46,7 @@ def link_get(line: Union[gpd.GeoDataFrame, shapely.LineString],
 
     def get_line(x):
         ls = []
-        tmp = linspace(x['o'], x['d'], s)
+        tmp = np.linspace(x['o'], x['d'], s)
         for i in tmp:
             ls.append(line_geometry.interpolate(i))
         return shapely.LineString(ls)
@@ -82,11 +80,11 @@ def undirected2(df: pd.DataFrame, link: list[any, any]) -> pd.DataFrame:
 
 def undirected(df: pd.DataFrame, link: list[any, any]) -> pd.DataFrame:
     def historic(n):
-        def prime(ii, primess):
-            for primee in primess:
-                if not (ii == primee or ii % primee):
+        def prime(ii, primes_s):
+            for prime_e in primes_s:
+                if not (ii == prime_e or ii % prime_e):
                     return False
-            primess.add(ii)
+            primes_s.add(ii)
             return ii
         primes = {2}
         i, pr = 2, 0
@@ -111,43 +109,73 @@ def undirected(df: pd.DataFrame, link: list[any, any]) -> pd.DataFrame:
     return df
 
 
-def coord_trans(s: Union[shapely.Point, shapely.LineString, shapely.Polygon, gpd.GeoDataFrame, list, tuple, ndarray]):
+def coord_trans(
+        s: Union[shapely.Point, shapely.LineString, shapely.Polygon, gpd.GeoDataFrame, list, tuple, np.ndarray]
+                ):
     def nc_get(longitude, latitude):
-        ct = CoordTrans(lon=longitude, lat=latitude)
+        ct = geo.CoordTrans(lon=longitude, lat=latitude)
         new_lon, new_lat = ct.wgs842gcj02()
         return list(zip(new_lon, new_lat))
 
     def doit(shape):
         if isinstance(shape, shapely.Polygon):
-            lon = array(list(shape.exterior.coords.xy[0]))
-            lat = array(list(shape.exterior.coords.xy[1]))
+            lon = np.array(list(shape.exterior.coords.xy[0]))
+            lat = np.array(list(shape.exterior.coords.xy[1]))
             new_coord = nc_get(lon, lat)
             return shapely.Polygon(new_coord)
         elif isinstance(shape, shapely.LineString):
-            lon = array(list(shape.xy[0]))
-            lat = array(list(shape.xy[1]))
+            lon = np.array(list(shape.xy[0]))
+            lat = np.array(list(shape.xy[1]))
             new_coord = nc_get(lon, lat)
             return shapely.LineString(new_coord)
         else:
-            lon = array(list(shape.xy[0]))
-            lat = array(list(shape.xy[1]))
+            lon = np.array(list(shape.xy[0]))
+            lat = np.array(list(shape.xy[1]))
             new_coord = nc_get(lon, lat)
             return shapely.Point(new_coord)
 
     if isinstance(s, gpd.GeoDataFrame):
         s['geometry'] = s['geometry'].apply(lambda r: doit(r))
         res = s.copy()
-    elif isinstance(s, (list, tuple, ndarray)):
-        a = array(s)  # 转ndarray
+    elif isinstance(s, (list, tuple, np.ndarray)):
+        a = np.array(s)  # 转ndarray
         if a.ndim == 1:
-            res = nc_get(array([a[0]]), array([a[1]]))
+            res = nc_get(np.array([a[0]]), np.array([a[1]]))
         else:
             res = nc_get(a[:, 0], a[:, 1])
-        if isinstance(s, ndarray):
-            res = array(res)
+        if isinstance(s, np.ndarray):
+            res = np.array(res)
     else:
         res = doit(s)
     return res
+
+
+def here(ax, how='', draw=True, p=0.01, alpha=0.3, color='#1f77b4', xy=False):
+    ax_copy = ax
+    dy = ax_copy.get_ylim()[1] - ax_copy.get_ylim()[0]
+    dx = ax_copy.get_xlim()[1] - ax_copy.get_xlim()[0]  # 获取图的尺寸
+    my = (ax_copy.get_ylim()[1] + ax_copy.get_ylim()[0]) / 2
+    mx = (ax_copy.get_xlim()[1] + ax_copy.get_xlim()[0]) / 2  # 获取图的中点，作为初始定位点
+    action_label = ['T', 't', 'D', 'd', 'R', 'r', 'L', 'l']
+    action_map = p * np.array([10, 1, -10, -1] * 2)  # 不同指令对应的位移距离（比例）
+    action_count = np.array(list(map(lambda h: how.count(h), action_label)))  # 统计how中各指令的数量
+    action = action_count * action_map * np.array([dy] * 4 + [dx] * 4)  # 指令转换为移动距离
+    x = mx + np.sum(action[4:])
+    y = my + np.sum(action[:4])
+
+    if draw:
+        for i in ax_copy.get_children():
+            i.set_alpha(alpha)
+
+        ax_copy.axhline(y=y, color=color)
+        ax_copy.axvline(x=x, color=color)
+        return ax_copy
+    else:
+        if xy:  # 若指定平面像素坐标输出
+            loc = (x, y)
+        else:
+            loc = (x, y)
+        return loc
 
 
 if __name__ == '__main__':
