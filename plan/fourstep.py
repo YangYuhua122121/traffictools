@@ -146,16 +146,17 @@ class Assigner:
         self.od = od
         self.cost = cost
 
-    def all_or_no(self, o, d, your_graph: Union[nx.Graph, None] = None):
+    def all_or_no(self, o, d, your_graph: Union[nx.Graph, None] = None, q_mane='x'):
         if your_graph is None:
             graph = self.g.copy()  # 创建副本
         else:
             graph = your_graph.copy()
+        nx.set_edge_attributes(graph, 0, name=q_mane)
         q = self.od.loc[o, d]  # 获取要分配的流量
         path = nx.shortest_path(graph, source=o, target=d, weight=self.cost)
         edge_lst = net.poi2e(path, graph, mode='pp')
         for e in edge_lst:
-            nx.set_edge_attributes(graph, {e: q}, name='x')  # 分配流量至路径中每一个路段
+            nx.set_edge_attributes(graph, {e: q}, name=q_mane)  # 分配流量至路径中每一个路段
         return graph
 
     def pma(self, o, d, theta=1):
@@ -166,7 +167,7 @@ class Assigner:
         for i in list(nx.all_simple_edge_paths(graph, source=o, target=d)):
             path_c = []  # 路径总阻抗列表
             for e in i:
-                path_c.append(graph.edges[e]['free_t'])
+                path_c.append(graph.edges[e][self.cost])
             all_c.append(sum(path_c))
 
         all_c = np.exp(-theta * np.array(all_c))  # 似然值表
@@ -182,7 +183,7 @@ class Assigner:
 
     def dial(self, o, d, theta=1):
         graph = self.g.copy().to_directed()
-        q = self.od.loc[0, d]
+        q = self.od.loc[o, d]
         # 初始化
         x = nx.shortest_path_length(graph, source=o, weight=self.cost)
         y = nx.shortest_path_length(graph, source=d, weight=self.cost)
@@ -190,13 +191,12 @@ class Assigner:
         nx.set_node_attributes(graph, y, name='s')  # 添加节点s值
         nx.set_edge_attributes(graph, 0, name='W')  # 初始化权重
         nx.set_edge_attributes(graph, 0, name='L')  # 初始化似然值
-        nx.set_edge_attributes(graph, 0, name='q')  # 初始化流量
+        nx.set_edge_attributes(graph, 0, name='x')  # 初始化流量
 
         # 计算似然值
         for e in graph.edges:
             ei, ej = e[0], e[1]  # 该边的端点
             ri, rj = graph.nodes[ei]['r'], graph.nodes[ej]['r']
-            # si, sj = graph.nodes[ei]['s'], graph.nodes[ej]['s']
             cij = graph.edges[e][self.cost]
 
             if ri < rj:
@@ -241,7 +241,7 @@ class Assigner:
                 # X for j = s
                 for i in in_edges:
                     x = q * graph.edges[i]['W'] / sum(w_sum)
-                    nx.set_edge_attributes(graph, {i: x}, name='q')
+                    nx.set_edge_attributes(graph, {i: x}, name='x')
 
             else:
                 in_edges = graph.in_edges(j)
@@ -255,16 +255,15 @@ class Assigner:
                 # sum X
                 x_sum = []
                 for out_e in out_edges:
-                    x_sum.append(graph.edges[out_e]['q'])
+                    x_sum.append(graph.edges[out_e]['x'])
 
                 for i in in_edges:
                     x = graph.edges[i]['W'] * sum(x_sum) / sum(w_sum)
-                    nx.set_edge_attributes(graph, {i: x}, name='q')
+                    nx.set_edge_attributes(graph, {i: x}, name='x')
         return graph
 
     def fw(self, o, d, param_dict, free_t, road_typ, bg, mode='UE', conv_val=10e-4, max_iter=50):
         graph = self.g.copy()
-        # q = self.od.loc[o, d]
         test_val = 1
         flag = True
         n = 0
@@ -295,7 +294,7 @@ class Assigner:
                 t = self.bpr(t0=t0, w=w, **param_dict[arg_k])  # 求解BPR
                 nx.set_edge_attributes(graph, {e: t}, name='BPR')  # 给每条边附上BPR的值
 
-            graph = self.all_or_no(o, d, your_graph=graph)  # 使用全由全无分配流量y
+            graph = self.all_or_no(o, d, your_graph=graph, q_mane='y')  # 使用全由全无分配流量y
 
             # 基于二分法求解移动步长
             def obj_func(f_lda):
