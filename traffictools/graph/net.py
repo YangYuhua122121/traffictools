@@ -31,7 +31,7 @@ def net2df(graph: nx.Graph, n1='node1', n2='node2'):
 def poi2e(path_pois, g, label='name', mode='label'):
     edge_lst2 = []  # 获取独立的边的顶点列表[(1, 2), (2, 4)]
     for i in range(len(path_pois) - 1):
-        edge_lst2.append(path_pois[i: i + 2])  # 以win=2的滑动窗口获取独立顶点边
+        edge_lst2.append(tuple(path_pois[i: i + 2]))  # 以win=2的滑动窗口获取独立顶点边
     edge_lst = []  # 输出
     if mode == 'label':
         for i in edge_lst2:  # 迭代每条边
