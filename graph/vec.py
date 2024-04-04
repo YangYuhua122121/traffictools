@@ -110,7 +110,7 @@ def undirected(df: pd.DataFrame, link: list[any, any]) -> pd.DataFrame:
 
 
 def coord_trans(
-        s: Union[shapely.Point, shapely.LineString, shapely.Polygon, gpd.GeoDataFrame, list, tuple, np.ndarray]
+        s: Union[shapely.Point, shapely.LineString, shapely.Polygon, gpd.GeoDataFrame, pd.DataFrame, list, tuple, np.ndarray]
                 ):
     def nc_get(longitude, latitude):
         ct = geo.CoordTrans(lon=longitude, lat=latitude)
@@ -134,6 +134,12 @@ def coord_trans(
             new_coord = nc_get(lon, lat)
             return shapely.Point(new_coord)
 
+    # df附加功能
+    df_col = []
+    if type(s) == pd.DataFrame:
+        df_col = s.columns
+        s = s.values
+
     if isinstance(s, gpd.GeoDataFrame):
         s['geometry'] = s['geometry'].apply(lambda r: doit(r))
         res = s.copy()
@@ -147,6 +153,11 @@ def coord_trans(
             res = np.array(res)
     else:
         res = doit(s)
+
+    # df附加功能
+    if len(df_col) != 0:
+        res = pd.DataFrame(data=res, columns=df_col)
+
     return res
 
 
@@ -176,6 +187,15 @@ def here(ax, how='', draw=True, p=0.01, alpha=0.3, color='#1f77b4', xy=False):
         else:
             loc = (x, y)
         return loc
+
+def distance(data: pd.DataFrame, lon_col: list, lat_col: list, r=6371):
+    data2 = data.copy()
+    data2[lon_col+lat_col] = np.pi*data2[lon_col+lat_col]/180  # 转为弧度制
+    dlon = data2[lon_col[1]] - data2[lon_col[0]]
+    dlat = data2[lat_col[1]] - data2[lat_col[0]]
+    a = np.sin(dlat/2.0)**2 + np.cos(data2[lat_col[0]]) * np.cos(data2[lat_col[1]]) * np.sin(dlon/2.0)**2
+    dist = 2 * r * 1000 * np.arcsin(np.sqrt(a))
+    return dist
 
 
 if __name__ == '__main__':

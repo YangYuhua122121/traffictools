@@ -312,7 +312,10 @@ class Assigner:
                     elif mode == 'SO':
                         tx = self.bpr(t0=f_t0, w=f_x_before, **param_dict[f_arg_k])
                         ty = self.bpr(t0=f_t0, w=f_x_after, **param_dict[f_arg_k])
-                        margin = w * (ty - tx) / (f_x_after - f_x_before)  # 边际时间
+                        if f_x_after - f_x_before == 0:  # 边际变化率为0
+                            margin = 0
+                        else:
+                            margin = w * (ty - tx) / (f_x_after - f_x_before)  # 边际时间
                         obj_lst.append((f_t + margin) * (f_x_after - f_x_before))  # 单项目标函数
                 return sum(obj_lst)
 

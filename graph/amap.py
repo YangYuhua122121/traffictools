@@ -209,6 +209,10 @@ class AMap:
         return data
 
 
+def id_search(kw, mode, type_file, ad_file, key_file):
+    pass
+
+
 if __name__ == '__main__':
     am = AMap('9bcb17cf863e6b02511fb0e06be627e5')
     print(am.name2loc('嘉定'))
