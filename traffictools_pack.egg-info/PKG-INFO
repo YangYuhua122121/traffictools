@@ -1,0 +1,11 @@
+Metadata-Version: 2.1
+Name: traffictools-pack
+Version: 1.1
+Summary: A toolkit for undergraduate transportation students
+Home-page: https://github.com/YangYuhua122121/traffictools/tree/main
+Author: YuHua Yang
+Author-email: 2803680027@qq.com
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6

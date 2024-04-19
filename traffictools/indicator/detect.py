@@ -19,8 +19,8 @@ class Coil:
         :param col_dict: 指定关键参数列名。默认值条件下，相关参数列名为['id', 't', 'q', 'v', 'o']
         :param pos_dict: 指定线圈里程位置（m）
         """
-        self.data = data
-        self.pos_dict = pos_dict  # 线圈里程坐标(m)
+        self.__data = data
+        self.__pos_dict = pos_dict  # 线圈里程坐标(m)
 
         # 修改关键参数的列名映射，使用列名时，格式为：col_dict['x']
         self.col_dict = {'id': 'id', 't': 't', 'q': 'q', 'v': 'v', 'o': 'o'}
@@ -42,8 +42,8 @@ class Coil:
         :return:
         """
         # 基于时间和线圈编号排序数据
-        order_list = list(pd.Series(self.pos_dict).sort_values().index)
-        ordered_data = mypd.order(self.data, by=[self.col_dict['t'], self.col_dict['id']],
+        order_list = list(pd.Series(self.__pos_dict).sort_values().index)
+        ordered_data = mypd.order(self.__data, by=[self.col_dict['t'], self.col_dict['id']],
                                   order_dict={self.col_dict['id']: order_list})
         v_col = self.col_dict['v']
         id_col = self.col_dict['id']
@@ -53,7 +53,7 @@ class Coil:
         od_data['mean_v'] = (od_data[f'{v_col}_o'] + od_data[f'{v_col}_d']) / 2
 
         # 线圈与路段长度映射
-        dst_data = mypd.poi2od(pd.Series(self.pos_dict).sort_values().reset_index())
+        dst_data = mypd.poi2od(pd.Series(self.__pos_dict).sort_values().reset_index())
         dst_data['interval'] = dst_data['0_d'] - dst_data['0_o']
         dst_data.columns = [f'{id_col}_o', '_', f'{id_col}_d', '_', 'interval']
         dst_data.drop(columns=['_'], inplace=True)
@@ -65,7 +65,7 @@ class Coil:
         tmp['travel_time'] = tmp['interval'] / (tmp['mean_v'])  # 单位为秒
 
         # 尾部线圈的对照表
-        tail_data = self.data[self.data[self.col_dict['id']] == order_list[-1]].copy()
+        tail_data = self.__data[self.__data[self.col_dict['id']] == order_list[-1]].copy()
         tail_data['timestamp'] = (tail_data[self.col_dict['t']] - tmp[self.col_dict['t']].min()).dt.total_seconds()
         tail_data['timestamp'] = tail_data['timestamp'].astype(int)
 
@@ -178,7 +178,7 @@ class Coil:
         # 线性模型
         elif method == 'linear':
             # 构造路段映射
-            coil_pos = pd.Series(self.pos_dict).reset_index()
+            coil_pos = pd.Series(self.__pos_dict).reset_index()
             link_map = (pd.merge(dst_data, coil_pos, left_on=f'{id_col}_d', right_on='index').
                         reset_index())
             link_map = link_map.drop(columns=['index', f'{id_col}_d']).rename(columns={'level_0': 'Link', 0: 'end_pos'})
