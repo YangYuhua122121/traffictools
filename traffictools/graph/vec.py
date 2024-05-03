@@ -3,12 +3,15 @@
 @Author : 杨与桦
 @Time : 2023/10/03 16:48
 """
+import copy
+
 import geopandas as gpd
 import shapely
 import pandas as pd
 from typing import Union
 from traffictools.graph import geo
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def coord_trans(
@@ -73,9 +76,9 @@ def distance(data: pd.DataFrame, lon_col: list, lat_col: list, r=6371):
     return dist
 
 
-def grid_generate(bonuds: list, length=500, r=6371000):
-    lon_range = [bonuds[0], bonuds[2]]
-    lat_range = [bonuds[1], bonuds[3]]
+def grid_generate(bounds: list, length=500, r=6371000):
+    lon_range = [bounds[0], bounds[2]]
+    lat_range = [bounds[1], bounds[3]]
     clat = np.radians(sum(lat_range) / 2)  # 选区的中心纬度，用以近似计算纬线长
     C = 2 * r * np.pi  # 地球周长
     delta_lon = np.round(360 / (np.cos(clat) * C) * length, 6)  # 每栅格跨经度
@@ -122,32 +125,33 @@ def grid_generate(bonuds: list, length=500, r=6371000):
     return grid
 
 
-def here(ax, how='', draw=True, p=0.01, alpha=0.3, color='#1f77b4', xy=False):
-    ax_copy = ax
-    dy = ax_copy.get_ylim()[1] - ax_copy.get_ylim()[0]
-    dx = ax_copy.get_xlim()[1] - ax_copy.get_xlim()[0]  # 获取图的尺寸
-    my = (ax_copy.get_ylim()[1] + ax_copy.get_ylim()[0]) / 2
-    mx = (ax_copy.get_xlim()[1] + ax_copy.get_xlim()[0]) / 2  # 获取图的中点，作为初始定位点
-    action_label = ['T', 't', 'D', 'd', 'R', 'r', 'L', 'l']
+def here(ax, how: list[str], draw=True, p=0.01, alpha=0.3, color='#1f77b4', lw=1):
+    dy = ax.get_ylim()[1] - ax.get_ylim()[0]
+    dx = ax.get_xlim()[1] - ax.get_xlim()[0]  # 获取图的尺寸
+    cy = (ax.get_ylim()[1] + ax.get_ylim()[0]) / 2
+    cx = (ax.get_xlim()[1] + ax.get_xlim()[0]) / 2  # 获取图的中点，作为初始定位点
+
+    action_label = ['U', 'u', 'D', 'd', 'R', 'r', 'L', 'l']
     action_map = p * np.array([10, 1, -10, -1] * 2)  # 不同指令对应的位移距离（比例）
-    action_count = np.array(list(map(lambda h: how.count(h), action_label)))  # 统计how中各指令的数量
-    action = action_count * action_map * np.array([dy] * 4 + [dx] * 4)  # 指令转换为移动距离
-    x = mx + np.sum(action[4:])
-    y = my + np.sum(action[:4])
+
+    locs = []  # 坐标集
+    for i in how:
+        action_count = np.array(list(map(lambda h: i.count(h), action_label)))  # 统计how中各指令的数量
+        action = action_count * action_map * np.array([dy] * 4 + [dx] * 4)  # 指令转换为移动距离
+        x = cx + np.sum(action[4:])
+        y = cy + np.sum(action[:4])
+        locs.append((x, y))
 
     if draw:
-        for i in ax_copy.get_children():
+        for i in ax.get_children():  # 修改各要素不透明度
             i.set_alpha(alpha)
 
-        ax_copy.axhline(y=y, color=color)
-        ax_copy.axvline(x=x, color=color)
-        return ax_copy
-    else:
-        if xy:  # 若指定平面像素坐标输出
-            loc = (x, y)
-        else:
-            loc = (x, y)
-        return loc
+        for i in range(len(how)):
+            loc = locs[i]
+            ax.axhline(y=loc[1], color=color, lw=lw)
+            ax.axvline(x=loc[0], color=color, lw=lw)
+            ax.text(loc[0], loc[1], i)
+    return locs
 
 
 def link_get(line: Union[gpd.GeoDataFrame, shapely.LineString],
@@ -249,5 +253,4 @@ def undirected2(df: pd.DataFrame, link: list[any, any]) -> pd.DataFrame:
 
 
 if __name__ == '__main__':
-    ps = [(1, 2), (2, 5)]
-    tran_ps = coord_trans(ps)
+    pass

@@ -179,9 +179,18 @@ class Sq:
 
 
 if __name__ == '__main__':
-    # s1 = Sq(1)
-    # s1.form_generate()
-    # print(s1.conclude())
-    dt = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 1, 3]})
-    print(dt)
-    print(dt.min(axis=1))
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    coords = []
+
+    def onpick(event):
+        print(f"你在( {event.x}, {event.y} )处单击了鼠标。")
+        coords.append((event.x, event.y))
+
+    scatter = ax.scatter([1, 2, 3, 4], [1, 2, 3, 4], picker=True)
+    fig.canvas.mpl_connect('pick_event', onpick)
+
+    plt.show()
+    print(coords)
