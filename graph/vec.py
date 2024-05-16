@@ -125,14 +125,14 @@ def grid_generate(bounds: list, length=500, r=6371000):
     return grid
 
 
-def here(ax, how: list[str], draw=True, p=0.01, alpha=0.3, color='#1f77b4', lw=1):
+def here(ax, how: list[str], draw=True, p=0.01, n=10, alpha=0.3, color='r', lw=1, style='short'):
     dy = ax.get_ylim()[1] - ax.get_ylim()[0]
     dx = ax.get_xlim()[1] - ax.get_xlim()[0]  # 获取图的尺寸
     cy = (ax.get_ylim()[1] + ax.get_ylim()[0]) / 2
     cx = (ax.get_xlim()[1] + ax.get_xlim()[0]) / 2  # 获取图的中点，作为初始定位点
 
     action_label = ['U', 'u', 'D', 'd', 'R', 'r', 'L', 'l']
-    action_map = p * np.array([10, 1, -10, -1] * 2)  # 不同指令对应的位移距离（比例）
+    action_map = p * np.array([n, 1, -n, -1] * 2)  # 不同指令对应的位移距离（比例）
 
     locs = []  # 坐标集
     for i in how:
@@ -148,8 +148,12 @@ def here(ax, how: list[str], draw=True, p=0.01, alpha=0.3, color='#1f77b4', lw=1
 
         for i in range(len(how)):
             loc = locs[i]
-            ax.axhline(y=loc[1], color=color, lw=lw)
-            ax.axvline(x=loc[0], color=color, lw=lw)
+            if style == 'long':
+                ax.axhline(y=loc[1], color=color, lw=lw)
+                ax.axvline(x=loc[0], color=color, lw=lw)
+            elif style == 'short':
+                ax.hlines(y=loc[1], xmin=loc[0] - dx / 50, xmax=loc[0] + dx / 50, color=color, lw=lw)
+                ax.vlines(x=loc[0], ymin=loc[1] - dx / 50, ymax=loc[1] + dx / 50, color=color, lw=lw)
             ax.text(loc[0], loc[1], i)
     return locs
 

@@ -43,8 +43,8 @@ class Coil:
         """
         # 基于时间和线圈编号排序数据
         order_list = list(pd.Series(self.__pos_dict).sort_values().index)
-        ordered_data = mypd.order(self.__data, by=[self.col_dict['t'], self.col_dict['id']],
-                                  order_dict={self.col_dict['id']: order_list})
+        ordered_data = mypd.diy_order(self.__data, by=[self.col_dict['t'], self.col_dict['id']],
+                                      order_dict={self.col_dict['id']: order_list})
         v_col = self.col_dict['v']
         id_col = self.col_dict['id']
 
@@ -123,7 +123,7 @@ class Coil:
                 tmp1.drop(columns=['timestamp'], inplace=True)
             tmp1 = tmp1[[self.col_dict['t']] + [f'travel_time{i}' for i in range(len(order_list) - 1)]]
             col = [f'travel_time{i}' for i in range(len(order_list) - 1)]
-            tmp2 = mypd.snsdt_trans(tmp1, col, [self.col_dict['t']])[[self.col_dict['t'], 'value']]
+            tmp2 = mypd.col2val(tmp1, col, [self.col_dict['t']])[[self.col_dict['t'], 'value']]
             res = od_map(tmp2)
 
         # 动态时间切片模型
@@ -171,7 +171,7 @@ class Coil:
                 tmp1['end_t'] = int_base_t(tmp1['cum_t'] + tmp1[f'travel_time{i}'])  # 计算下一路段的初始化离开时间
 
             tmp1.drop(columns=['Y', 'interval', 'end_t', f'{v_col}_o', 'cum_t'], inplace=True)
-            tmp2 = (mypd.snsdt_trans(tmp1, typ=list(tmp1.columns[1:]), retain=[self.col_dict['t']]).
+            tmp2 = (mypd.col2val(tmp1, typ=list(tmp1.columns[1:]), retain=[self.col_dict['t']]).
                     drop(columns='type'))
             res = od_map(tmp2)
 
@@ -240,7 +240,7 @@ class Coil:
             tmp1 = tmp1[[self.col_dict['t']] + travel_time_col]
 
             # 删除无效的行程时间记录
-            tmp2 = mypd.snsdt_trans(tmp1, list(tmp1.columns)[1:], retain=[self.col_dict['t']])
+            tmp2 = mypd.col2val(tmp1, list(tmp1.columns)[1:], retain=[self.col_dict['t']])
             tmp2 = tmp2[tmp2['value'] != 0]  # 删除无效记录（travel_time=0）
             tmp3 = tmp2.drop_duplicates(subset=self.col_dict['t']).copy()
             tmp3['value'] = 0  # 构造初始列，用于后续OD作差

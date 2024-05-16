@@ -8,7 +8,7 @@ from typing import Union
 from pandas.api.types import CategoricalDtype
 
 
-def snsdt_trans(df, typ: list, retain: Union[list, None] = None):
+def col2val(df, typ: list, retain: Union[list, None] = None):
     tmp = df.unstack().reset_index()
     trans_df = tmp[tmp['level_0'].isin(typ)]
     if not(retain is None):
@@ -19,7 +19,7 @@ def snsdt_trans(df, typ: list, retain: Union[list, None] = None):
     return trans_df
 
 
-def order(df: pd.DataFrame, by: list, order_dict: dict, ascending=True):
+def diy_order(df: pd.DataFrame, by: list, order_dict: dict, ascending=True):
     for k in order_dict.keys():
         order_tmp = CategoricalDtype(order_dict[k], ordered=True)  # 实例化有序序列
         df[k] = df[k].astype(order_tmp)  # 将该列转化为有序数据类型
