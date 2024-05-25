@@ -9,7 +9,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="traffictools-pack",  # 用自己的名替换其中的YOUR_USERNAME_
+    name="traffictools",  # 用自己的名替换其中的YOUR_USERNAME_
     version="1.1",  # 包版本号，便于维护版本
     author="YuHua Yang",  # 作者，可以写自己的姓名
     author_email="2803680027@qq.com",  # 作者联系方式，可写自己的邮箱地址

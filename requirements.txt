@@ -3,3 +3,6 @@ pandas
 geopandas
 requests
 shapely
+networkx
+matplotlib
+scipy

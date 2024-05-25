@@ -1,6 +1,0 @@
-README.md
-setup.py
-traffictools_pack.egg-info/PKG-INFO
-traffictools_pack.egg-info/SOURCES.txt
-traffictools_pack.egg-info/dependency_links.txt
-traffictools_pack.egg-info/top_level.txt
