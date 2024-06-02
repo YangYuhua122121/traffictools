@@ -76,6 +76,72 @@ def incond(col: pd.Series, interval: str):
     return condition
 
 
+def unit_split(x1_col=None, x2_col=None, poi: list = None, edge: list = None, left: list = None, right: list = None,
+               na_fill=0):
+    lst = []
+
+    # 获取填充值
+    if type(na_fill) != list:
+        na_fill = [na_fill] * len(edge)
+
+    # 解析edge数据
+    for i, fill in zip(edge, na_fill):
+        i: pd.DataFrame
+        i = i.copy()
+        # 将起始里程划分
+        s = i.drop(columns=[x2_col])
+        d = i[[x2_col]].rename(columns={x2_col: x1_col})
+        s[x1_col], d[x1_col] = s[x1_col].astype(int), d[x1_col].astype(int)
+        dt = pd.concat([s, d])
+        dt = dt.fillna(fill)
+        lst.append(dt)
+
+    # 解析right数据
+    for i in right:
+        i = i.copy()
+        i[x2_col] = i[x2_col].shift()  # 更改为起点里程
+        i[x2_col] = i[x2_col].fillna(0)  # 将第一条数据的起点里程更改为0
+        i[x2_col] = i[x2_col].astype(int)
+        i = i.rename(columns={x2_col: x1_col})
+        lst.append(i)
+
+    # 解析left与poi数据
+    for i in left + poi:
+        i = i.copy()
+        i[x1_col] = i[x1_col].astype(int)
+        lst.append(i)
+
+    # 数据融合
+    tmp = lst[0]
+    for i in lst[1:]:
+        tmp = pd.merge(tmp, i, how='outer', on=x1_col)
+
+    # 数据补缺
+    # edge数据补缺
+    for i, fill in zip(edge, na_fill):
+        i: pd.DataFrame
+        tmp_col = i.drop(columns=[x1_col, x2_col]).columns
+        tmp[tmp_col] = tmp[tmp_col].ffill()
+        tmp[tmp_col] = tmp[tmp_col].fillna(fill)
+    # left数据补缺
+    for i in left:
+        tmp_col = i.drop(columns=x1_col).columns
+        tmp[tmp_col] = tmp[tmp_col].ffill()
+    # right数据补缺
+    for i in right:
+        tmp_col = i.drop(columns=x2_col).columns
+        tmp[tmp_col] = tmp[tmp_col].ffill()
+
+    tmp = tmp.rename(columns={x1_col: '起点里程'})
+    tmp['终点里程'] = tmp['起点里程'].shift(-1)
+    tmp = tmp.iloc[:-1, :]
+    tmp['终点里程'] = tmp['终点里程'].astype(int)
+    tmp['单元长度'] = tmp['终点里程'] - tmp['起点里程']
+    initial_col = ['起点里程', '终点里程', '单元长度']
+    tmp = tmp[initial_col + list(tmp.drop(columns=initial_col).columns)]
+    return tmp
+
+
 def win_clean(data: pd.DataFrame, win: int, subset: list):
     times = (len(data)//win) + 1  # 去重次数
     remain = []
