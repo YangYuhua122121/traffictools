@@ -3,10 +3,9 @@
 @Author : 杨与桦
 @Time : 2024/04/18 23:20
 """
+import os
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
-from typing import Union
 
 
 class Sq:
@@ -16,6 +15,8 @@ class Sq:
         self.SR = 1550
         self.STS = 3600
         self.STD = 1600
+        self.I = 4
+        self.fold = 'Sq'
         self.KSI = {1: 1, 2: 0.625, 3: 0.51, 4: 0.44}
         self.FPL = {60: 0.88, 90: 0.87, 120: 0.86}
         self.FPH = {60: 0.42, 90: 0.38, 120: 0.36}
@@ -23,11 +24,13 @@ class Sq:
         self.__filename = name
 
     def form_generate(self):
-        general_col = ['id', 'W', 'G', 'HV']
-        s_col = ['ge', '#bL', '#qL', '#C']
-        l_col = ['n', 'qt0']
-        r_col = ['r', 'p', 'C', 'gj', 'bTD', 'bTS', 'Wb']
-        t_col = ['qt', 'qturn']
+        general_col = ['id', 'W', 'G', 'HV', 'C', 'j']
+        s_col = ['ge(可缺省)', 'bL(二选一)', 'qL(二选一)']
+        l_col = ['n', 'qt0', 'lambda(可缺省)']
+        r_col = ['r', 'p', 'bTD', 'bTS', 'Wb']
+        t_col = ['qT', 'qturn']
+
+        # 生成参数表
         if self.__direction == 'S':
             form = pd.DataFrame(columns=general_col + s_col)
         elif self.__direction == 'L':
@@ -39,18 +42,18 @@ class Sq:
         elif self.__direction == 'SR':
             form = pd.DataFrame(columns=general_col + s_col + l_col + t_col)
         else:
-            ValueError(f'direction参数设置不正确：{self.__direction} 不在[S、L、R、SL、SR]内')
-            form = pd.DataFrame()
+            raise ValueError(f'direction参数设置不正确：{self.__direction} 不在[S、L、R、SL、SR]内')
+
+        # 检索是否存在文件，若不存在则生成一个form
         try:
-            pd.read_excel(f'./{self.__filename}_{self.__direction}.xlsx')
-        except FileNotFoundError:
-            form.to_excel(f'./{self.__filename}_{self.__direction}.xlsx', index=False)
+            pd.read_excel(f'./{self.fold}/{self.__filename}_{self.__direction}.xlsx')
+        except OSError or FileNotFoundError:
+            if not os.path.exists(f'./{self.fold}'):
+                os.mkdir(f'{self.fold}')
+            form.to_excel(f'./{self.fold}/{self.__filename}_{self.__direction}.xlsx', index=False)
 
     def conclude(self):
-        # 通用系数
-        form = pd.read_excel(f'./{self.__filename}_{self.__direction}.xlsx')
-        form['fw'] = form['W'].apply(Sq.__fw)
-        form['fg'] = form.apply(lambda x: Sq.__fg(x['G'], x['HV']), axis=1)
+        # 列名
         output = ['饱和流量|pcu/h']
         f_general_col = ['id', 'fw', 'fg']
         f_s_col = ['fb']
@@ -58,21 +61,28 @@ class Sq:
         f_r_col = ['fr', 'fp', 'fb_r', 'fpb']
         f_t_col = ['fTT']
 
+        # 通用系数
+        form = pd.read_excel(f'./{self.fold}/{self.__filename}_{self.__direction}.xlsx')
+        form['fw'] = form['W'].apply(Sq.__fw)
+        form['fg'] = form.apply(lambda x: Sq.__fg(x['G'], x['HV']), axis=1)
+
         # 直行车道求解过程
         def s_process(op=output[0]):
-            form['fb'] = form.apply(lambda x: Sq.__fb(x['#bL'], x['ge'], x['#C'], x['#qL']), axis=1)
+            form['fb'] = form.apply(lambda x: Sq.__fb(x['bL(二选一)'], x['ge(可缺省)'],
+                                                      x['C'], x['j'], x['qL(二选一)'], self.I), axis=1)
             form[op] = (form['fw'] * form['fg'] * form['fb'] * self.ST).astype(int)
 
         # 左转车道求解过程
         def l_process(op=output[0]):
-            form['fL'] = form.apply(lambda x: Sq.__fl(x['n'], x['qt0'], x['lambda'], self.KSI), axis=1)
+            form['fL'] = form.apply(lambda x: Sq.__fl(x['n'], x['qt0'], x['lambda(可缺省)'], self.KSI,
+                                                      x['C'], x['j'], self.I), axis=1)
             form[op] = (form['fw'] * form['fg'] * form['fL'] * self.SL).astype(int)
 
         # 右转车道求解过程
         def r_process(op=output[0]):
             form['fr'] = form.apply(lambda x: Sq.__fr(x['r']), axis=1)
             form['fp'] = form.apply(lambda x: Sq.__fp(x['p'], x['C'], self.FPL, self.FPH), axis=1)
-            form['fb_r'] = form.apply(lambda x: Sq.__fb_r(x['gj'], x['bTD'], x['bTS'], self.STD, self.STS, x['Wb'])
+            form['fb_r'] = form.apply(lambda x: Sq.__fb_r(x['C'], x['bTD'], x['bTS'], self.STD, self.STS, x['Wb'])
                                       , axis=1)
             form['fpb'] = form[['fp', 'fb_r']].min(axis=1)
             form[op] = (form['fw'] * form['fg'] * form['fr'] * form['fpb'] * self.SR).astype(int)
@@ -113,7 +123,7 @@ class Sq:
         elif w > 3.5:
             return 0.05 * (w + 16.5)
         else:
-            ValueError(f'输入的车道宽度w不符合规范：(w = {w} < 2.7m)')
+            raise ValueError(f'输入的车道宽度w不符合规范：(w = {w} < 2.7m)')
 
     # 坡度与大车修正
     @staticmethod
@@ -123,21 +133,26 @@ class Sq:
         if hv <= 0.5:
             return 1 - (g + hv)
         else:
-            ValueError(f'大车率hv超出规范要求：hv = {hv} > 0.5')
+            raise ValueError(f'大车率hv超出规范要求：hv = {hv} > 0.5')
 
     # 直行-非机动车修正
     @staticmethod
-    def __fb(bl, ge, c, ql):
-        if bl is None:
+    def __fb(bl, ge, c, j, ql, i):
+        if np.isnan(ge):
+            ge = c / j - i
+        if np.isnan(bl):
             bl = int(ql * (c - ge) / 3600)
-        if bl >= 1:
+        if bl > 0:
             return round(1 - (1 + np.sqrt(bl)) / ge, 3)
         else:
             return 1
 
     # 左转校正系数
     @staticmethod
-    def __fl(n, qt0, _lambda, ksi):
+    def __fl(n, qt0, _lambda, ksi, c, j, i):
+        if np.isnan(_lambda):
+            ge = c / j - i
+            _lambda = ge / c
         if qt0 == 0:
             return 1
         else:
@@ -166,9 +181,9 @@ class Sq:
 
     # 右转-非机动车校正系数
     @staticmethod
-    def __fb_r(gj, btd, bts, std, sts, wb):
+    def __fb_r(c, btd, bts, std, sts, wb):
         tt = 3600 * (bts / sts + btd / std) / wb
-        return 1 - tt / gj
+        return 1 - tt / c
 
     # 直转合流校正系数
     @staticmethod
@@ -179,18 +194,4 @@ class Sq:
 
 
 if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    coords = []
-
-    def onpick(event):
-        print(f"你在( {event.x}, {event.y} )处单击了鼠标。")
-        coords.append((event.x, event.y))
-
-    scatter = ax.scatter([1, 2, 3, 4], [1, 2, 3, 4], picker=True)
-    fig.canvas.mpl_connect('pick_event', onpick)
-
-    plt.show()
-    print(coords)
+    pass

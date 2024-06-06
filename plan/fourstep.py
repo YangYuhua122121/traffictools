@@ -4,12 +4,12 @@
 @Time : 2023/11/28 14:16
 """
 import pandas as pd
-import statsmodels.api as sm
 import numpy as np
+import networkx as nx
+import statsmodels.api as sm
 from typing import Union
 from traffictools.graph import net
 from traffictools.utils import opt
-import networkx as nx
 
 
 class Generator:

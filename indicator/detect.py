@@ -4,10 +4,11 @@
 @Time : 2024/03/29 18:25
 """
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from typing import Union
+from traffictools.graph import od
 from traffictools.utils import mypd
-import numpy as np
 
 
 class Coil:
@@ -49,11 +50,11 @@ class Coil:
         id_col = self.col_dict['id']
 
         # 数据预处理，构造OD数据，求解路段平均速度
-        od_data = mypd.poi2od(ordered_data, [self.col_dict['t']])
+        od_data = od.poi2od_df(ordered_data, [self.col_dict['t']])
         od_data['mean_v'] = (od_data[f'{v_col}_o'] + od_data[f'{v_col}_d']) / 2
 
         # 线圈与路段长度映射
-        dst_data = mypd.poi2od(pd.Series(self.__pos_dict).sort_values().reset_index())
+        dst_data = od.poi2od_df(pd.Series(self.__pos_dict).sort_values().reset_index())
         dst_data['interval'] = dst_data['0_d'] - dst_data['0_o']
         dst_data.columns = [f'{id_col}_o', '_', f'{id_col}_d', '_', 'interval']
         dst_data.drop(columns=['_'], inplace=True)
@@ -245,7 +246,7 @@ class Coil:
             tmp3 = tmp2.drop_duplicates(subset=self.col_dict['t']).copy()
             tmp3['value'] = 0  # 构造初始列，用于后续OD作差
             tmp2 = pd.concat([tmp2, tmp3]).sort_values(by=[self.col_dict['t'], 'value'])
-            tmp2 = mypd.poi2od(tmp2[['value', self.col_dict['t']]], [self.col_dict['t']])
+            tmp2 = od.poi2od_df(tmp2[['value', self.col_dict['t']]], [self.col_dict['t']])
             tmp2['travel_time'] = tmp2['value_d'] - tmp2['value_o']
             tmp2 = tmp2.sort_values(by=self.col_dict['t'])
             tmp2 = tmp2.drop(columns=['value_o', 'value_d']).reset_index(drop=True)

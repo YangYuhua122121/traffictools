@@ -3,15 +3,13 @@
 @Author : 杨与桦
 @Time : 2023/10/03 16:48
 """
-import copy
-
-import geopandas as gpd
 import shapely
+import geopandas as gpd
 import pandas as pd
-from typing import Union
-from traffictools.graph import geo
 import numpy as np
 import matplotlib.pyplot as plt
+from typing import Union
+from traffictools.graph import geo
 
 
 def coord_trans(
@@ -206,54 +204,6 @@ def link_get(line: Union[gpd.GeoDataFrame, shapely.LineString],
         link_df.loc[link_df.index[0], name] = 'start'
         link_df.loc[link_df.index[-1], f'_{name}'] = 'end'
     return link_df
-
-
-def undirected(df: pd.DataFrame, link: list[any, any]) -> pd.DataFrame:
-    def historic(n):
-        def prime(ii, primes_s):
-            for prime_e in primes_s:
-                if not (ii == prime_e or ii % prime_e):
-                    return False
-            primes_s.add(ii)
-            return ii
-        primes = {2}
-        i, pr = 2, 0
-        while True:
-            if prime(i, primes):
-                pr += 1
-                if pr == n:
-                    return primes
-            i += 1
-    p1 = list(df[link[0]].unique())
-    p2 = list(df[link[1]].unique())
-    p = list(set(p1+p2))
-    p1_mark = pd.DataFrame({link[0]: p, 'mark1': list(historic(len(p)))})
-    p2_mark = pd.DataFrame({link[1]: p, 'mark2': list(historic(len(p)))})
-    df = pd.merge(df, p1_mark, on=link[0])
-    df = pd.merge(df, p2_mark, on=link[1])
-    df['mark'] = df['mark1']*df['mark2']
-    new_link = df.drop_duplicates(subset='mark')[link+['mark']]
-    df = pd.merge(df, new_link, on='mark')
-    df = df.drop(columns=[str(link[0])+'_x', str(link[1])+'_x', 'mark1', 'mark2', 'mark'])
-    df.rename(columns={str(link[0])+'_y': link[0], str(link[1])+'_y': link[1]}, inplace=True)
-    return df
-
-
-def undirected2(df: pd.DataFrame, link: list[any, any]) -> pd.DataFrame:
-    df1 = df[[link[0]]+[link[1]]+list(df.columns.drop(link))].copy()
-    df1['mark1'] = range(len(df))
-    df2 = df[[link[1]]+[link[0]]+list(df.columns.drop(link))].copy()
-    df2.rename(columns={link[0]: link[1], link[1]: link[0]}, inplace=True)
-    df2['mark1'] = range(len(df))
-    df = pd.concat([df1, df2])
-    lst = []
-    for i in df.groupby(link):
-        i[1]['mark1'] = i[1]['mark1'].min()
-        i[1]['mark2'] = range(len(i[1]))
-        lst.append(i[1])
-    res = pd.concat(lst)
-    undi_df = res.drop_duplicates(subset=['mark1', 'mark2']).drop(columns=['mark1', 'mark2'])
-    return undi_df
 
 
 if __name__ == '__main__':

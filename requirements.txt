@@ -6,3 +6,4 @@ shapely
 networkx
 matplotlib
 scipy
+statsmodels
