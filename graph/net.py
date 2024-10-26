@@ -6,15 +6,15 @@
 import pandas as pd
 import networkx as nx
 import numpy as np
+from typing import Union
 
 
-def df2net(df: pd.DataFrame, n1, n2, other=None):
+def df2net(df: pd.DataFrame, n1, n2, other: Union[None, list] = None):
     g = nx.Graph()
     if other is None:  # 无属性
         g.add_edges_from(list(zip(df[n1], df[n2])))
     else:
-        for i in df.index:
-            tmp = df.loc[i]
+        for i, tmp in df.iterrows():
             other_dict = {}
             for k in other:
                 other_dict[k] = tmp[k]
