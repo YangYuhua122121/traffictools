@@ -9,14 +9,17 @@ import numpy as np
 from typing import Union
 
 
-def df2net(df: pd.DataFrame, n1, n2, other: Union[None, list] = None):
-    g = nx.Graph()
-    if other is None:  # 无属性
-        g.add_edges_from(list(zip(df[n1], df[n2])))
+def df2net(df: pd.DataFrame, n1, n2, is_dg: bool = True, attr: Union[None, list] = None):
+    if is_dg:
+        g = nx.DiGraph()
     else:
+        g = nx.Graph()
+    if attr is None:  # 无属性
+        g.add_edges_from(list(zip(df[n1], df[n2])))
+    else:  # 有属性
         for i, tmp in df.iterrows():
             other_dict = {}
-            for k in other:
+            for k in attr:
                 other_dict[k] = tmp[k]
             g.add_edge(tmp[n1], tmp[n2], **other_dict)
     return g
