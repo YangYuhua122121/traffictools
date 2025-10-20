@@ -103,6 +103,22 @@ def unit_split(x1_col=None, x2_col=None, poi: list = None, edge: list = None, le
     tmp = tmp[initial_col + list(tmp.drop(columns=initial_col).columns)]
     return tmp
 
+def one2one_check(df: pd.DataFrame, col1: str|int, col2: str|int) -> bool:
+    """
+    检查dataframe中的两列是否为一一对应关系
+    :param df: 数据
+    :param col1: 字段1
+    :param col2: 字段2
+    :return: 是否为一一对应关系
+    """
+    # 检查每组col1对应唯一的col2，且每组col2对应唯一的col1
+    grouped1 = df.groupby(col1)[col2].nunique()
+    grouped2 = df.groupby(col2)[col1].nunique()
+
+    # 如果所有组的唯一值数量都是1，则说明一一对应
+    is_one_to_one = (grouped1 == 1).all() and (grouped2 == 1).all()
+
+    return is_one_to_one
 
 # def win_clean(data: pd.DataFrame, win: int, subset: list):
 #     times = (len(data)//win) + 1  # 去重次数

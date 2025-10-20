@@ -8,7 +8,8 @@ import geopandas as gpd
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Union
+from pyproj import Proj
+from typing import Union, Tuple
 from traffictools.graph import geo
 
 
@@ -69,7 +70,7 @@ def distance(data: pd.DataFrame, lon_col: list, lat_col: list, r=6371):
     data2[lon_col+lat_col] = np.pi*data2[lon_col+lat_col]/180  # 转为弧度制
     dlon = data2[lon_col[1]] - data2[lon_col[0]]
     dlat = data2[lat_col[1]] - data2[lat_col[0]]
-    a = np.sin(dlat/2.0)**2 + np.cos(data2[lat_col[0]]) * np.cos(data2[lat_col[1]]) * np.sin(dlon/2.0)**2
+    a = np.sin(dlat / 2.0) ** 2 + np.cos(data2[lat_col[0]]) * np.cos(data2[lat_col[1]]) * np.sin(dlon / 2.0) ** 2
     dist = 2 * r * 1000 * np.arcsin(np.sqrt(a))
     return dist
 
@@ -204,6 +205,44 @@ def link_get(line: Union[gpd.GeoDataFrame, shapely.LineString],
         link_df.loc[link_df.index[0], name] = 'start'
         link_df.loc[link_df.index[-1], f'_{name}'] = 'end'
     return link_df
+
+
+class ProjTrans:
+    def __init__(self, proj_string: str, *, is_lonlat2xy: bool = True, move_dict: dict = None):
+        """
+        坐标转换器
+        :param proj_string: Proj字串
+        :param is_lonlat2xy: 是否为地理坐标转投影坐标，默认为是
+        :param move_dict: 偏移字典，格式为{x: 0, y: 0}
+        """
+        self.proj_string = proj_string
+        self.is_lonlat2xy = is_lonlat2xy
+        self.Proj = Proj(self.proj_string)
+
+        if move_dict is None:
+            self.move_dict = {'x_move': 0, 'y_move': 0}
+        else:
+            self.move_dict = move_dict
+
+    def trans(self, x: float, y: float) -> Tuple[float, float]:
+        """
+        基于坐标转换器的参数完成坐标转换
+        :param x: 转换前的lon/x坐标
+        :param y: 转换前的lat/y坐标
+        :return: 转换后的坐标元组
+        """
+        if self.is_lonlat2xy:
+            # 转为经纬度后偏移得到xy
+            x, y = self.Proj(x, y)
+            x += self.move_dict['x_move']
+            y += self.move_dict['y_move']
+        else:
+            # xy偏移后转为经纬度
+            x -= self.move_dict['x_move']
+            y -= self.move_dict['y_move']
+            x, y = self.Proj(x, y, inverse=True)
+
+        return x, y
 
 
 if __name__ == '__main__':
