@@ -10,14 +10,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pyproj import Proj
 from typing import Union, Tuple
-from traffictools.graph import geo
+from traffictools.graph import _geo
 
 
 def coord_trans(
         s: Union[shapely.Point, shapely.LineString, shapely.Polygon, gpd.GeoDataFrame, pd.DataFrame, list, tuple, np.ndarray]
                 ):
     def nc_get(longitude, latitude):
-        ct = geo.CoordTrans(lon=longitude, lat=latitude)
+        ct = _geo.CoordTrans(lon=longitude, lat=latitude)
         new_lon, new_lat = ct.wgs842gcj02()
         return list(zip(new_lon, new_lat))
 
