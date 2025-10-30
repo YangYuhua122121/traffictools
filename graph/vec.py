@@ -244,6 +244,17 @@ class ProjTrans:
 
         return x, y
 
+def df2gdf(data: pd.DataFrame, x_col: str = 'lon', y_col: str = 'lat') -> gpd.GeoDataFrame:
+    """
+    将DataFrame快速转为GeoDataFrame。包含新建geometry列及数据类型转换两个步骤
+    :param data: 待转换的数据
+    :param x_col: 经度字段
+    :param y_col: 纬度字段
+    """
+    data = data.copy()
+    data['geometry'] = gpd.points_from_xy(data[x_col], data[y_col])
+    data = gpd.GeoDataFrame(data)
+    return data
 
 if __name__ == '__main__':
     pass
