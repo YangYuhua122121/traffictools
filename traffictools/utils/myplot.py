@@ -6,7 +6,6 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 from typing import Union
-import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 import matplotlib
 
