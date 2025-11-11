@@ -29,6 +29,12 @@ class InterFig:
     def __init__(self, fig: Figure, relim_k: float = 0.1, scale_k: float = 0.1):
         """
         将Figure对象转换为一个可交互的图窗。用户可继续在原Axes对象上绘图。
+
+        ！！注意！！
+        使用该功能时，应在导入matplotlib后马上设置后端：
+        import matplotlib
+        matplotlib.use('TkAgg')  # 或matplotlib.use('Qt5Agg')
+
         支持的交互方式包括：
         1. 鼠标左键拖动
         2. 鼠标滚轮放缩
@@ -45,7 +51,12 @@ class InterFig:
         ifig.show()  # 渲染并作图（代替plt.show())
 
         """
-        matplotlib.use('TkAgg')
+        # try:
+        #     matplotlib.use('TkAgg')
+        # except ImportError:
+        #     matplotlib.use('Qt5Agg')
+        # except Exception as exp:
+        #     print(exp)
         self._startx = 0
         self._starty = 0
         self._mPress = False
