@@ -6,7 +6,8 @@
 import pandas as pd
 import networkx as nx
 import numpy as np
-from typing import Union
+from typing import Union, List, Tuple
+from od import poi2od_lst
 
 
 def df2net(df: pd.DataFrame, n1, n2, is_dg: bool = True, attr: Union[None, list] = None):
@@ -157,5 +158,51 @@ def pos_resort(pos_dict: dict, before, after):
             pos_dict[i] = refer_dict[j]
     return pos_dict
 
+class NetGenerator:
+    def __init__(self):
+        """
+        生成各类路网模型的拓扑图边列表
+        """
+    def highway(
+            self,
+            all_order: list, on: list, off: list, service: List[tuple],
+    )-> Tuple[list, dict, list]:
+        """
+        高速公路线性模型，支持主线、出入匝道及服务区节点的输入
+        :param all_order: 线性模型的节点顺序列表
+        :param on: 入口匝道的节点顺序列表
+        :param off: 出口匝道的节点顺序列表
+        :param service: 服务区入出口节点元组列表（先入后出）。如[(3, 4), (8, 9)]表示两个服务区的入出口
+        :return: 一个三元组(拓扑图的边列表，自动生成节点坐标，主线节点)
+        """
+        all_order = list(map(str, all_order))
+        on = list(map(str, on))
+        off = list(map(str, off))
+        service2 = list(map(str, [i for ii in service for i in ii]))  # 服务区节点一维列表
+        main_station = [i for i in all_order if (i not in on) and (i not in off) and (i not in service2)]  # 主线门架
 
+        edge_lst = poi2od_lst(all_order)
+        pos_dct = {all_order[idx]: [idx * 10, 0] for idx in range(len(all_order))}
 
+        # 处理上匝道
+        for s in on:
+            edge_lst.append([s + '.1', s])
+            x = pos_dct[s][0]
+            pos_dct.update({s + '.1': [x, 5]})
+
+        # 处理下匝道
+        for s in off:
+            edge_lst.append([s, s + '.0'])
+            x = pos_dct[s][0]
+            pos_dct.update({s + '.0': [x, -5]})
+
+        # 处理服务区
+        for ses in service:
+            o = str(ses[0])
+            d = str(ses[1])
+            edge_lst.append([o, o + d])
+            edge_lst.append([o + d, d])
+            x = pos_dct[o][0]
+            pos_dct.update({o + d: [x, -3]})
+
+        return edge_lst, pos_dct, main_station
